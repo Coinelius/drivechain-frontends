@@ -22,7 +22,10 @@ class AssetHolding {
   });
 
   String get displayName =>
-      assetName ?? (assetId == 'btc' ? '${activeTicker.symbol} (Native)' : assetId.substring(0, 12));
+      assetName ??
+      (assetId == 'btc'
+          ? '${activeTicker.symbol} (Native)'
+          : (assetId.length > 12 ? assetId.substring(0, 12) : assetId));
   bool get isBtc => assetId == 'btc';
 }
 
@@ -164,13 +167,32 @@ class AssetAnalyticsProvider extends ChangeNotifier {
         if (content == null) continue;
 
         if (content.containsKey('BitAsset')) {
-          final assetData = content['BitAsset'] as Map<String, dynamic>;
-          final assetId = assetData['asset_id'] as String?;
-          final amount = assetData['amount'] as int?;
-
-          if (assetId != null && amount != null) {
-            assetAmounts[assetId] = (assetAmounts[assetId] ?? 0) + amount;
-            totalValue += amount;
+          // `get_wallet_utxos` serialises this as a two-element array,
+          // [assetId, amount], not an object with 'asset_id'/'amount' keys.
+          // Casting it to a Map threw, and the throw was swallowed by the
+          // outer catch, so every BitAsset holding silently vanished from the
+          // dashboard and the holdings count read 0.
+          final assetData = content['BitAsset'];
+          if (assetData is List && assetData.length == 2) {
+            final assetId = assetData[0] as String?;
+            final amount = assetData[1] as int?;
+            if (assetId != null && amount != null) {
+              assetAmounts[assetId] = (assetAmounts[assetId] ?? 0) + amount;
+              totalValue += amount;
+            }
+          }
+        } else if (content.containsKey('AmmLpToken')) {
+          // An LP position is a real holding and was not counted at all.
+          final lp = content['AmmLpToken'];
+          if (lp is Map<String, dynamic>) {
+            final amount = lp['amount'] as int?;
+            final asset0 = lp['asset0'] as String? ?? '';
+            final asset1 = lp['asset1'] as String? ?? '';
+            if (amount != null) {
+              final key = 'lp:$asset0/$asset1';
+              assetAmounts[key] = (assetAmounts[key] ?? 0) + amount;
+              totalValue += amount;
+            }
           }
         }
       }
@@ -195,7 +217,9 @@ class AssetAnalyticsProvider extends ChangeNotifier {
         newHoldings.add(
           AssetHolding(
             assetId: entry.key,
-            assetName: null, // Will be resolved by UI if needed
+            // Only LP positions get a name here; a BitAsset is left null so
+            // the UI resolves it from the local hash -> name map.
+            assetName: _lpHoldingName(entry.key),
             amount: entry.value,
             percentageOfPortfolio: totalValue > 0 ? (entry.value / totalValue) * 100 : 0,
           ),
@@ -208,6 +232,23 @@ class AssetAnalyticsProvider extends ChangeNotifier {
       holdingsError = e.toString();
       isLoadingHoldings = false;
     }
+  }
+
+  /// A label for an LP holding key, or null for a plain BitAsset.
+  ///
+  /// An `AssetId` is hex: `00` is the native coin, `01` followed by the id is
+  /// a BitAsset. The name is not on chain, so the short id stands in.
+  String? _lpHoldingName(String holdingKey) {
+    if (!holdingKey.startsWith('lp:')) return null;
+    String side(String assetId) {
+      if (assetId == '00') return activeTicker.symbol;
+      final bare = assetId.length > 2 ? assetId.substring(2) : assetId;
+      return bare.length >= 8 ? bare.substring(0, 8) : bare;
+    }
+
+    final sides = holdingKey.substring(3).split('/');
+    if (sides.length != 2) return 'LP token';
+    return 'LP ${side(sides[0])}/${side(sides[1])}';
   }
 
   Future<void> _fetchPools() async {

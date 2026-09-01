@@ -511,7 +511,8 @@ class PortfolioDashboardViewModel extends BaseViewModel {
 
     // Try to find the asset in the provider
     final asset = bitAssetsProvider.entries.where((e) => e.hash == assetId).firstOrNull;
-    return asset?.plaintextName ?? assetId.substring(0, 12);
+    return asset?.plaintextName ??
+        (assetId.length > 12 ? assetId.substring(0, 12) : assetId);
   }
 
   void copyToClipboard(String text, BuildContext context) {

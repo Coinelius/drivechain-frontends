@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:bitassets/widgets/portfolio_dashboard.dart';
 import 'package:get_it/get_it.dart';
 import 'package:sail_ui/pages/sidechains/sidechain_overview_page.dart';
 import 'package:sail_ui/sail_ui.dart';
@@ -164,6 +165,19 @@ class BitAssetsWidgetCatalog {
             );
           },
         ),
+      ),
+    ),
+    'portfolio': HomepageWidgetInfo(
+      id: 'portfolio',
+      name: 'Portfolio',
+      description: 'BitAsset and LP token holdings',
+      size: WidgetSize.full,
+      icon: SailSVGAsset.iconWallet,
+      // PortfolioDashboard builds an unbounded column, so give it a bounded,
+      // scrollable box the way the transaction table does.
+      builder: (_) => const SizedBox(
+        height: 600,
+        child: SingleChildScrollView(child: PortfolioDashboard()),
       ),
     ),
   };
