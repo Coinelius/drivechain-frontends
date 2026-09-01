@@ -1123,25 +1123,61 @@ class DutchAuctionEntry {
 class BitAssetsUTXO extends SidechainUTXO {
   final Map<String, dynamic> output;
 
-  BitAssetsUTXO({required super.outpoint, required this.output})
-    : super(
-        address: output['address'] as String,
-        valueSats: _extractValueSats(output['content']),
-        type: OutpointType.deposit,
-      );
+  BitAssetsUTXO({
+    required super.outpoint,
+    required this.output,
+    OutpointType? outpointType,
+  }) : super(
+         address: output['address'] as String,
+         valueSats: _extractValueSats(
+           output['content'] as Map<String, dynamic>,
+         ),
+         type: outpointType ?? OutpointType.deposit,
+       );
 
   static int _extractValueSats(Map<String, dynamic> content) {
     // Extract value based on content type
     if (content.containsKey('BitcoinSats')) {
-      return content['BitcoinSats'] as int;
-    } else if (content.containsKey('BitAsset')) {
-      return content['BitAsset']['amount'] as int;
+      return content['BitcoinSats'] as int? ?? 0;
+    }
+    // A BitAsset output is serialised as [assetId, amount] - a two-element
+    // array, not an object - so indexing it by 'amount' threw.
+    final bitAsset = content['BitAsset'];
+    if (bitAsset is List && bitAsset.length == 2) {
+      return bitAsset[1] as int? ?? 0;
+    }
+    final lpToken = content['AmmLpToken'];
+    if (lpToken is Map<String, dynamic>) {
+      return lpToken['amount'] as int? ?? 0;
     }
     return 0;
   }
 
-  factory BitAssetsUTXO.fromJson(Map<String, dynamic> json) => BitAssetsUTXO(
-    outpoint: json['outpoint'] as String,
-    output: json['output'] as Map<String, dynamic>,
-  );
+  factory BitAssetsUTXO.fromJson(Map<String, dynamic> json) {
+    // The outpoint is an object keyed by kind, never a bare string: `Regular`
+    // carries txid/vout, `Coinbase` carries merkle_root/vout, and `Deposit` is
+    // a string. Casting the object straight to String threw on the very first
+    // UTXO, so `listUTXOs` failed as a whole and every caller saw an empty
+    // wallet.
+    final outpoint = json['outpoint'] as Map<String, dynamic>;
+    final String outpointStr;
+    final OutpointType type;
+    if (outpoint.containsKey('Regular')) {
+      final regular = outpoint['Regular'] as Map<String, dynamic>;
+      outpointStr = '${regular['txid']}:${regular['vout']}';
+      type = OutpointType.regular;
+    } else if (outpoint.containsKey('Coinbase')) {
+      final coinbase = outpoint['Coinbase'] as Map<String, dynamic>;
+      outpointStr = '${coinbase['merkle_root']}:${coinbase['vout']}';
+      type = OutpointType.regular;
+    } else {
+      outpointStr = outpoint['Deposit'] as String? ?? '';
+      type = OutpointType.deposit;
+    }
+    return BitAssetsUTXO(
+      outpoint: outpointStr,
+      output: json['output'] as Map<String, dynamic>,
+      outpointType: type,
+    );
+  }
 }
