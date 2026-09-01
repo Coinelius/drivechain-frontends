@@ -51,7 +51,7 @@ class AmmTabPage extends StatelessWidget {
                                   child: SailTextField(
                                     hintText: '0',
                                     controller: model.amountSpendController,
-                                    suffix: model.assetSpend.isEmpty ? activeTicker.symbol : null,
+                                    suffix: model.assetSpend.isEmpty ? activeTicker.subunit : null,
                                   ),
                                 ),
                               ],
@@ -95,7 +95,7 @@ class AmmTabPage extends StatelessWidget {
                                     hintText: '0',
                                     controller: model.amountReceiveController,
                                     readOnly: true,
-                                    suffix: model.assetReceive.isEmpty ? activeTicker.symbol : null,
+                                    suffix: model.assetReceive.isEmpty ? activeTicker.subunit : null,
                                   ),
                                 ),
                               ],
@@ -409,37 +409,67 @@ class AmmSwapViewModel extends BaseViewModel {
 
     try {
       final price = await rpc.getAmmPrice(
-        base: assetSpend.isEmpty ? 'btc' : assetSpend,
-        quote: assetReceive.isEmpty ? 'btc' : assetReceive,
+        base: _assetId(assetSpend),
+        quote: _assetId(assetReceive),
       );
 
-      if (price != null) {
-        final base = price['base'];
-        final quote = price['quote'];
-        if (base != null && quote != null) {
-          priceInfo =
-              '1 ${_assetLabel(assetSpend)} = ${(quote / base).toStringAsFixed(6)} ${_assetLabel(assetReceive)}';
+      final rate = _parsePrice(price);
+      if (rate != null) {
+        priceInfo =
+            '1 ${_assetLabel(assetSpend)} = ${rate.toStringAsFixed(6)} ${_assetLabel(assetReceive)}';
 
-          // Update estimated receive amount
-          final spendAmount = int.tryParse(amountSpendController.text);
-          if (spendAmount != null && spendAmount > 0) {
-            final estimated = (spendAmount * quote / base).round();
-            amountReceiveController.text = estimated.toString();
-          }
+        // Update estimated receive amount
+        final spendAmount = int.tryParse(amountSpendController.text);
+        if (spendAmount != null && spendAmount > 0) {
+          amountReceiveController.text =
+              (spendAmount * rate).round().toString();
         }
       } else {
         priceInfo = 'No liquidity pool exists for this pair';
         amountReceiveController.text = '';
       }
     } catch (e) {
-      priceInfo = null;
+      // Silence here is expensive: a malformed request or an unparseable
+      // response looks exactly like an empty pool, with nothing on screen to
+      // say otherwise.
+      priceInfo = 'Price unavailable: $e';
       amountReceiveController.text = '';
     }
     notifyListeners();
   }
 
+  /// The RPC takes a borsh-encoded `AssetId` as hex: `00` for the native coin,
+  /// and `01` followed by the id for a BitAsset. The dropdown carries the bare
+  /// BitAsset hash (empty string for native), which `_assetLabel` and the
+  /// provider both key on, so convert only here at the RPC boundary. Sending
+  /// the bare hash makes the node read its first byte as the borsh enum tag
+  /// ("unexpected variant tag: 144" for an id starting 90), and the old 'btc'
+  /// placeholder is not valid hex at all.
+  String _assetId(String dropdownValue) =>
+      dropdownValue.isEmpty ? '00' : '01$dropdownValue';
+
+  /// `get_amm_price` returns the reserve ratio as a serialised Rust
+  /// `Fraction` - `{"Rational":["Plus",[numer,denom]]}` - or null when the
+  /// pair has no pool. It carries no 'base'/'quote' keys. The node orients it
+  /// as the price of `base` in terms of `quote`, so it is the multiplier for
+  /// the spend amount directly.
+  double? _parsePrice(Map<String, dynamic>? price) {
+    final rational = price?['Rational'];
+    if (rational is! List || rational.length != 2) return null;
+    final parts = rational[1];
+    if (parts is! List || parts.length != 2) return null;
+    final numer = parts[0];
+    final denom = parts[1];
+    if (numer is! num || denom is! num || denom == 0) return null;
+    final magnitude = numer.toDouble() / denom.toDouble();
+    return rational[0] == 'Minus' ? -magnitude : magnitude;
+  }
+
   String _assetLabel(String assetId) {
-    if (assetId.isEmpty) return activeTicker.symbol;
+    // The subunit, not the symbol: amounts here are always the smallest unit,
+    // whatever the display setting says, because that is what the RPC takes
+    // and what the pool reserves are denominated in.
+    if (assetId.isEmpty) return activeTicker.subunit;
     final entry = bitAssetsProvider.entries.where((e) => e.hash == assetId).firstOrNull;
     return entry?.plaintextName ?? assetId.substring(0, 8);
   }
@@ -453,8 +483,8 @@ class AmmSwapViewModel extends BaseViewModel {
       final amountSpend = int.parse(amountSpendController.text);
 
       final amountReceived = await rpc.ammSwap(
-        assetSpend: assetSpend.isEmpty ? 'btc' : assetSpend,
-        assetReceive: assetReceive.isEmpty ? 'btc' : assetReceive,
+        assetSpend: _assetId(assetSpend),
+        assetReceive: _assetId(assetReceive),
         amountSpend: amountSpend,
       );
 
