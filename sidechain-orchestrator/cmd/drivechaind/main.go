@@ -679,6 +679,8 @@ func run(cctx *cli.Context) error {
 			log.Info().Str("sidechain", name).Int("port", cfg.Port).Msg("registered sidechain RPC service")
 		case "sidepot":
 			h := sidepotsvc.NewHandler(proxy)
+			// Moves and deposits are mainchain transactions: the wallet sends them, the node signs.
+			h.SetL1Wallet(api.NewSidepotWallet(walletHandler))
 			handler.SetSidechainBalance(name, h.WalletBalance)
 			sidepotrpc.RegisterSidepotServiceHandler(sidechainServer, h)
 			log.Info().Str("sidechain", name).Int("port", cfg.Port).Msg("registered sidechain RPC service")

@@ -22,6 +22,8 @@ type Handler struct {
 	backend   *nodeBackend
 	history   HistorySource
 	addresses AddressSource
+	// l1 carries game moves and deposits; nil leaves them to the node.
+	l1 L1Wallet
 }
 
 func NewHandler(proxy *sidechain.JSONRPCProxy) *Handler {

@@ -21,4 +21,8 @@ type Host interface {
 
 	// MainchainCookie is the admin cookie of the local mainchain node.
 	MainchainCookie() string
+
+	// MainchainEsplora is the Esplora server that stands in for the mainchain
+	// node where none runs on this machine (light mode), or an empty string.
+	MainchainEsplora() string
 }

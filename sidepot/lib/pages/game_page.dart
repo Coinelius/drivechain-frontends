@@ -182,7 +182,8 @@ class _AccountCard extends StatelessWidget {
             suffixWidget: CopyButton(text: model.address),
           ),
           SailText.secondary12(
-            'A deposit to this address from any mainchain wallet lands in the game account, not in the sidechain wallet.',
+            'A deposit to this address from any mainchain wallet lands in the game account, not in the sidechain wallet. '
+            'The account belongs to this app: sidepot.cash or another wallet shows a different one, even with the same recovery phrase.',
           ),
         ],
       ),
