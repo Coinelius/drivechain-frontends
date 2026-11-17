@@ -46,6 +46,8 @@ export 'gen/orchestrator/v1/orchestrator.pb.dart';
 export 'gen/orchestrator/v1/orchestrator.pbenum.dart';
 export 'gen/orchestrator/v1/orchestrator.pbjson.dart';
 export 'gen/orchestrator/v1/orchestrator.pbserver.dart';
+export 'gen/sidepot/v1/sidepot.pb.dart'
+    show GameAccount, GameMoveResponse, GameState, GetGameAccountResponse, GetGameStateResponse;
 export 'gen/thunder/v1/thunder.connect.client.dart';
 export 'gen/thunder/v1/thunder.connect.spec.dart';
 export 'gen/thunder/v1/thunder.pb.dart'
@@ -185,6 +187,7 @@ export 'rpcs/bitcoind_connection.dart';
 export 'classes/peer_info.dart';
 export 'rpcs/rpc_sidechain.dart';
 export 'rpcs/bbc_rpc.dart';
+export 'rpcs/sidepot_rpc.dart';
 export 'rpcs/thunder_rpc.dart';
 export 'rpcs/thunder_utxo.dart';
 export 'rpcs/truthcoin_rpc.dart';

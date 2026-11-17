@@ -1,0 +1,398 @@
+syntax = "proto3";
+
+package sidepot.v1;
+
+service SidepotService {
+  // Get wallet balance (total and available).
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+
+  // Get current block count.
+  rpc GetBlockCount(GetBlockCountRequest) returns (GetBlockCountResponse);
+
+  // Stop the sidepot node.
+  rpc Stop(StopRequest) returns (StopResponse);
+
+  // Get a new address from the wallet.
+  rpc GetNewAddress(GetNewAddressRequest) returns (GetNewAddressResponse);
+
+  // Withdraw to mainchain.
+  rpc Withdraw(WithdrawRequest) returns (WithdrawResponse);
+
+  // Transfer within sidechain.
+  rpc Transfer(TransferRequest) returns (TransferResponse);
+
+  // Get total sidechain wealth in sats.
+  rpc GetSidechainWealth(GetSidechainWealthRequest) returns (GetSidechainWealthResponse);
+
+  // Create a deposit transaction.
+  rpc CreateDeposit(CreateDepositRequest) returns (CreateDepositResponse);
+
+  // Get pending withdrawal bundle.
+  rpc GetPendingWithdrawalBundle(GetPendingWithdrawalBundleRequest) returns (GetPendingWithdrawalBundleResponse);
+
+  // Connect to a peer.
+  rpc ConnectPeer(ConnectPeerRequest) returns (ConnectPeerResponse);
+
+  // List connected peers.
+  rpc ListPeers(ListPeersRequest) returns (ListPeersResponse);
+
+  // Mine a block.
+  rpc Mine(MineRequest) returns (MineResponse);
+
+  // Get block by hash.
+  rpc GetBlock(GetBlockRequest) returns (GetBlockResponse);
+
+  // Get best mainchain block hash.
+  rpc GetBestMainchainBlockHash(GetBestMainchainBlockHashRequest) returns (GetBestMainchainBlockHashResponse);
+
+  // Get best sidechain block hash.
+  rpc GetBestSidechainBlockHash(GetBestSidechainBlockHashRequest) returns (GetBestSidechainBlockHashResponse);
+
+  // Get BMM inclusions for a block.
+  rpc GetBmmInclusions(GetBmmInclusionsRequest) returns (GetBmmInclusionsResponse);
+
+  // Get wallet UTXOs.
+  rpc GetWalletUtxos(GetWalletUtxosRequest) returns (GetWalletUtxosResponse);
+
+  // List all UTXOs.
+  rpc ListUtxos(ListUtxosRequest) returns (ListUtxosResponse);
+
+  // Remove transaction from mempool.
+  rpc RemoveFromMempool(RemoveFromMempoolRequest) returns (RemoveFromMempoolResponse);
+
+  // Get latest failed withdrawal bundle height.
+  rpc GetLatestFailedWithdrawalBundleHeight(GetLatestFailedWithdrawalBundleHeightRequest) returns (GetLatestFailedWithdrawalBundleHeightResponse);
+
+  // Generate a new mnemonic.
+  rpc GenerateMnemonic(GenerateMnemonicRequest) returns (GenerateMnemonicResponse);
+
+  // Set seed from mnemonic.
+  rpc SetSeedFromMnemonic(SetSeedFromMnemonicRequest) returns (SetSeedFromMnemonicResponse);
+
+  // Raw JSON-RPC passthrough for debug console.
+  rpc CallRaw(CallRawRequest) returns (CallRawResponse);
+
+  // The game, after the last block and as of the latest mainchain block.
+  rpc GetGameState(GetGameStateRequest) returns (GetGameStateResponse);
+
+  // The game account of this node.
+  rpc GetGameAccount(GetGameAccountRequest) returns (GetGameAccountResponse);
+
+  // Buy keys in the current round from the game account of this node.
+  rpc GameBuy(GameBuyRequest) returns (GameMoveResponse);
+
+  // Pay out of the game account of this node to a sidechain coin.
+  rpc GameCashout(GameCashoutRequest) returns (GameMoveResponse);
+
+  // Deposit from the enforcer wallet into the game account of this node.
+  rpc GameDeposit(GameDepositRequest) returns (GameDepositResponse);
+
+  // Lists the wallet transaction history through the Esplora index. The node
+  // itself keeps no address history.
+  rpc ListWalletTransactions(ListWalletTransactionsRequest) returns (ListWalletTransactionsResponse);
+}
+
+// GetBalance
+
+message GetBalanceRequest {}
+
+message GetBalanceResponse {
+  int64 total_sats = 1;
+  int64 available_sats = 2;
+}
+
+// GetBlockCount
+
+message GetBlockCountRequest {}
+
+message GetBlockCountResponse {
+  int64 count = 1;
+}
+
+// Stop
+
+message StopRequest {}
+
+message StopResponse {}
+
+// GetNewAddress
+
+message GetNewAddressRequest {}
+
+message GetNewAddressResponse {
+  string address = 1;
+}
+
+// Withdraw
+
+message WithdrawRequest {
+  string address = 1;
+  int64 amount_sats = 2;
+  int64 side_fee_sats = 3;
+  int64 main_fee_sats = 4;
+}
+
+message WithdrawResponse {
+  string txid = 1;
+}
+
+// Transfer
+
+message TransferRequest {
+  string address = 1;
+  int64 amount_sats = 2;
+  int64 fee_sats = 3;
+}
+
+message TransferResponse {
+  string txid = 1;
+}
+
+// GetSidechainWealth
+
+message GetSidechainWealthRequest {}
+
+message GetSidechainWealthResponse {
+  int64 sats = 1;
+}
+
+// CreateDeposit
+
+message CreateDepositRequest {
+  string address = 1;
+  int64 value_sats = 2;
+  int64 fee_sats = 3;
+}
+
+message CreateDepositResponse {
+  string txid = 1;
+}
+
+// GetPendingWithdrawalBundle
+
+message GetPendingWithdrawalBundleRequest {}
+
+message GetPendingWithdrawalBundleResponse {
+  // JSON string of the bundle, empty if none.
+  string bundle_json = 1;
+}
+
+// ConnectPeer
+
+message ConnectPeerRequest {
+  string address = 1;
+}
+
+message ConnectPeerResponse {}
+
+// ListPeers
+
+message ListPeersRequest {}
+
+message ListPeersResponse {
+  string peers_json = 1;
+}
+
+// Mine
+
+message MineRequest {
+  int64 fee_sats = 1;
+}
+
+message MineResponse {
+  string bmm_result_json = 1;
+}
+
+// GetBlock
+
+message GetBlockRequest {
+  string hash = 1;
+}
+
+message GetBlockResponse {
+  string block_json = 1;
+}
+
+// GetBestMainchainBlockHash
+
+message GetBestMainchainBlockHashRequest {}
+
+message GetBestMainchainBlockHashResponse {
+  string hash = 1;
+}
+
+// GetBestSidechainBlockHash
+
+message GetBestSidechainBlockHashRequest {}
+
+message GetBestSidechainBlockHashResponse {
+  string hash = 1;
+}
+
+// GetBmmInclusions
+
+message GetBmmInclusionsRequest {
+  string block_hash = 1;
+}
+
+message GetBmmInclusionsResponse {
+  string inclusions = 1;
+}
+
+// GetWalletUtxos
+
+message GetWalletUtxosRequest {}
+
+message GetWalletUtxosResponse {
+  string utxos_json = 1;
+}
+
+// ListUtxos
+
+message ListUtxosRequest {}
+
+message ListUtxosResponse {
+  string utxos_json = 1;
+}
+
+// RemoveFromMempool
+
+message RemoveFromMempoolRequest {
+  string txid = 1;
+}
+
+message RemoveFromMempoolResponse {}
+
+// GetLatestFailedWithdrawalBundleHeight
+
+message GetLatestFailedWithdrawalBundleHeightRequest {}
+
+message GetLatestFailedWithdrawalBundleHeightResponse {
+  // 0 means no failed bundle.
+  int64 height = 1;
+}
+
+// GenerateMnemonic
+
+message GenerateMnemonicRequest {}
+
+message GenerateMnemonicResponse {
+  string mnemonic = 1;
+}
+
+// SetSeedFromMnemonic
+
+message SetSeedFromMnemonicRequest {
+  string mnemonic = 1;
+}
+
+message SetSeedFromMnemonicResponse {}
+
+// CallRaw
+
+message CallRawRequest {
+  string method = 1;
+  string params_json = 2;
+}
+
+message CallRawResponse {
+  string result_json = 1;
+}
+
+message ListWalletTransactionsRequest {}
+
+message ListWalletTransactionsResponse {
+  repeated SidechainWalletTransaction transactions = 1;
+  // The height of the chain tip the transactions were read at. A caller counts
+  // confirmations from it without a node of its own.
+  uint32 tip_height = 2;
+}
+
+message SidechainWalletTransaction {
+  string txid = 1;
+  // What the wallet gained, or lost when negative.
+  int64 value_sats = 2;
+  int64 fee_sats = 3;
+  uint32 block_height = 4;
+  int64 block_time = 5;
+  bool confirmed = 6;
+  // The first output this wallet owns. A row the wallet only spends from
+  // carries zero, because it owns no output there.
+  uint32 vout = 7;
+}
+
+message GameState {
+  // The last mainchain block the game has processed.
+  uint32 l1_height = 1;
+  // Counted mainchain blocks since the game began.
+  uint32 clock = 2;
+  uint32 round = 3;
+  // The clock value after which the round ends.
+  uint32 deadline = 4;
+  uint64 price_sats = 5;
+  uint64 pot_sats = 6;
+  uint64 bonus_pool_sats = 7;
+  uint32 accounts = 8;
+}
+
+message GetGameStateRequest {}
+
+message GetGameStateResponse {
+  // The game after the last sidechain block.
+  GameState confirmed = 1;
+  // The game as of the latest mainchain block.
+  GameState preview = 2;
+  // The first mainchain block of the game.
+  uint32 start_height = 3;
+}
+
+message GameAccount {
+  uint64 balance_sats = 1;
+  uint64 keys = 2;
+  uint64 nonce = 3;
+}
+
+message GetGameAccountRequest {}
+
+message GetGameAccountResponse {
+  // The x-only public key of the account, in hex.
+  string key = 1;
+  // The deposit address of the account.
+  string address = 2;
+  GameAccount confirmed = 3;
+  GameAccount preview = 4;
+}
+
+message GameBuyRequest {
+  uint32 keys = 1;
+  // The most to pay per key. Unset takes the default of the node.
+  optional uint64 max_price_sats = 2;
+  // The mainchain fee. Unset takes the default of the node.
+  optional uint64 fee_sats = 3;
+}
+
+message GameCashoutRequest {
+  // Zero pays out the whole balance.
+  uint64 amount_sats = 1;
+  // A sidechain address. Empty pays a new address of this wallet.
+  string dest = 2;
+  optional uint64 fee_sats = 3;
+}
+
+message GameMoveResponse {
+  // The mainchain transaction that carries the move.
+  string txid = 1;
+  uint32 round = 2;
+  uint64 nonce = 3;
+  // The last clock value at which the move counts.
+  uint32 expires = 4;
+}
+
+message GameDepositRequest {
+  uint64 value_sats = 1;
+  uint64 fee_sats = 2;
+}
+
+message GameDepositResponse {
+  string txid = 1;
+}

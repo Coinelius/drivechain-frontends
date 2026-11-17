@@ -14,7 +14,7 @@ func TestCreateSidechainCommands(t *testing.T) {
 
 	expectedSidechains := []string{
 		"bitassets", "bitnames", "coinshift",
-		"photon", "thunder", "truthcoin", "zside",
+		"photon", "sidepot", "thunder", "truthcoin", "zside",
 	}
 
 	if len(commands) != len(expectedSidechains) {

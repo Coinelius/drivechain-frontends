@@ -61,6 +61,7 @@ abstract class SidechainRPC extends RPCConnection {
       BinaryType.BINARY_TYPE_BITNAMES => 'bitnames',
       BinaryType.BINARY_TYPE_ZSIDE => 'zside',
       BinaryType.BINARY_TYPE_COINSHIFT => 'coinshift',
+      BinaryType.BINARY_TYPE_SIDEPOT => 'sidepot',
       _ => null,
     };
 

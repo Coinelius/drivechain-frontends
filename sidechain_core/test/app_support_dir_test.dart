@@ -14,6 +14,7 @@ const _apps = {
   'zside': BinaryType.BINARY_TYPE_ZSIDE,
   'truthcoin': BinaryType.BINARY_TYPE_TRUTHCOIN,
   'coinshift': BinaryType.BINARY_TYPE_COINSHIFT,
+  'sidepot': BinaryType.BINARY_TYPE_SIDEPOT,
   'photon': BinaryType.BINARY_TYPE_PHOTON,
   'bbc': null,
 };

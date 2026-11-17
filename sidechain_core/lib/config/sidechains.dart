@@ -54,6 +54,8 @@ abstract class Sidechain extends Binary {
 
       case 'coinshift':
         return CoinShift();
+      case 'sidepot':
+        return Sidepot();
 
       case 'bbc':
         return Bbc();
@@ -148,6 +150,18 @@ abstract class Sidechain extends Binary {
 
       case 'CoinShift':
         return CoinShift(
+          name: binary.name,
+          version: binary.version,
+          description: binary.description,
+          repoUrl: binary.repoUrl,
+          directories: binary.directories,
+          metadata: binary.metadata,
+          port: binary.port,
+          chainLayer: binary.chainLayer,
+        );
+
+      case 'Sidepot':
+        return Sidepot(
           name: binary.name,
           version: binary.version,
           description: binary.description,
@@ -949,6 +963,100 @@ class CoinShift extends Sidechain {
   }
 }
 
+class Sidepot extends Sidechain {
+  Sidepot({
+    super.name = 'Sidepot',
+    super.version = 'latest',
+    super.description = 'A last-buyer-wins key game with moves posted on the mainchain',
+    super.repoUrl = 'https://github.com/Coinelius/sidepot-node',
+    DirectoryConfig? directories,
+    MetadataConfig? metadata,
+    super.port = 6088,
+    super.chainLayer = 2,
+    super.downloadInfo = const DownloadInfo(),
+    super.extraBootArgs = const [],
+  }) : super(
+         directories:
+             directories ??
+             DirectoryConfig(
+               binary: allNetworks({
+                 OS.linux: 'sidepot',
+                 OS.macos: 'sidepot',
+                 OS.windows: 'sidepot',
+               }),
+               flutterFrontend: {
+                 OS.linux: 'com.layertwolabs.sidepot',
+                 OS.macos: 'com.layertwolabs.sidepot',
+                 OS.windows: 'com.layertwolabs.sidepot',
+               },
+             ),
+         metadata:
+             metadata ??
+             MetadataConfig(
+               downloadConfig: DownloadConfig(
+                 baseUrls: allNetworksUrl('https://api.github.com/repos/Coinelius/sidepot-node/releases/latest'),
+
+                 binary: 'sidepot-node',
+                 files: allNetworks({
+                   OS.linux: r'sidepot-node-v?\d+\.\d+\.\d+(-rc\d+)?-x86_64-unknown-linux-gnu\.zip$',
+                   OS.macos: r'sidepot-node-v?\d+\.\d+\.\d+(-rc\d+)?-x86_64-apple-darwin\.zip$',
+                   OS.windows: r'sidepot-node-v?\d+\.\d+\.\d+(-rc\d+)?-x86_64-pc-windows-gnu\.zip$',
+                 }),
+               ),
+               alternativeDownloadConfig: DownloadConfig(
+                 baseUrls: allNetworksUrl('https://api.github.com/repos/Coinelius/sidepot-node/releases/latest'),
+
+                 binary: 'sidepot-node',
+                 files: allNetworks({
+                   OS.linux: r'sidepot-node-v?\d+\.\d+\.\d+(-rc\d+)?-x86_64-unknown-linux-gnu\.zip$',
+                   OS.macos: r'sidepot-node-v?\d+\.\d+\.\d+(-rc\d+)?-x86_64-apple-darwin\.zip$',
+                   OS.windows: r'sidepot-node-v?\d+\.\d+\.\d+(-rc\d+)?-x86_64-pc-windows-gnu\.zip$',
+                 }),
+               ),
+               remoteTimestamp: null,
+               downloadedTimestamp: null,
+               binaryPath: null,
+               updateable: false,
+             ),
+       );
+
+  @override
+  final int slot = 88;
+
+  @override
+  BinaryType get type => BinaryType.BINARY_TYPE_SIDEPOT;
+
+  @override
+  Color color = SailColorScheme.green;
+
+  @override
+  Sidepot copyWith({
+    String? version,
+    String? description,
+    String? repoUrl,
+    DirectoryConfig? directories,
+    MetadataConfig? metadata,
+    String? binary,
+    int? port,
+    int? chainLayer,
+    DownloadInfo? downloadInfo,
+    List<String>? extraBootArgs,
+  }) {
+    return Sidepot(
+      name: name,
+      version: version ?? this.version,
+      description: description ?? this.description,
+      repoUrl: repoUrl ?? this.repoUrl,
+      directories: directories ?? this.directories,
+      metadata: metadata ?? this.metadata,
+      port: port ?? this.port,
+      chainLayer: chainLayer ?? this.chainLayer,
+      downloadInfo: downloadInfo ?? this.downloadInfo,
+      extraBootArgs: extraBootArgs ?? this.extraBootArgs,
+    );
+  }
+}
+
 List<Binary> get coreBinaries => [
   resolveFromConfig(BinaryType.BINARY_TYPE_BITCOIND, () => BitcoinCore()),
   resolveFromConfig(BinaryType.BINARY_TYPE_ENFORCER, () => Enforcer()),
@@ -963,6 +1071,7 @@ List<Binary> get sidechainBinaries => [
   resolveFromConfig(BinaryType.BINARY_TYPE_BITNAMES, () => BitNames()),
   resolveFromConfig(BinaryType.BINARY_TYPE_BITASSETS, () => BitAssets()),
   resolveFromConfig(BinaryType.BINARY_TYPE_COINSHIFT, () => CoinShift()),
+  resolveFromConfig(BinaryType.BINARY_TYPE_SIDEPOT, () => Sidepot()),
   resolveFromConfig(BinaryType.BINARY_TYPE_ZSIDE, () => ZSide()),
   resolveFromConfig(BinaryType.BINARY_TYPE_BBC, () => Bbc()),
 ];

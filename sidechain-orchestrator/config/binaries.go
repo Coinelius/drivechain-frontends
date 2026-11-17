@@ -275,6 +275,7 @@ var (
 	BitWindowDirs   = MustDirConfig("bitwindow")
 	EnforcerDirs    = MustDirConfig("enforcer")
 	ThunderDirs     = MustDirConfig("thunder")
+	SidepotDirs     = MustDirConfig("sidepot")
 	BitNamesDirs    = MustDirConfig("bitnames")
 	BitAssetsDirs   = MustDirConfig("bitassets")
 	ZSideDirs       = MustDirConfig("zside")
@@ -380,7 +381,7 @@ func (b BinaryDirConfig) GetBlockchainDataPaths(networkDir string, network Netwo
 	case "bitwindowd":
 		return GetExistingFilesInDir(networkDir, []string{"bitdrive", "bitwindow.db"}, log)
 
-	case "thunder", "bitnames", "bitassets", "thunder-orchard", "truthcoin", "photon", "coinshift":
+	case "thunder", "bitnames", "bitassets", "thunder-orchard", "truthcoin", "photon", "coinshift", "sidepot":
 		return GetExistingFilesInDir(networkDir, SidechainChainDataNames, log)
 
 	default:
@@ -544,7 +545,7 @@ func (b BinaryDirConfig) GetWalletPaths(networkDir string, network Network, log 
 			paths = append(paths, legacyWallet)
 		}
 
-	case "thunder", "bitnames", "bitassets", "thunder-orchard", "truthcoin", "photon", "coinshift":
+	case "thunder", "bitnames", "bitassets", "thunder-orchard", "truthcoin", "photon", "coinshift", "sidepot":
 		paths = append(paths, GetExistingFilesInDir(networkDir, []string{"wallet.mdb"}, log)...)
 		// Each parked wallet.mdb: of another BitWindow wallet, another eCash
 		// network, or a seed no wallet here made.
@@ -597,6 +598,13 @@ func (b BinaryDirConfig) GetSettingsPaths(networkDir string, network Network, lo
 			"assets", "bitwindow-bitcoin.conf", logfile.Name,
 			"downloads", "pids", "settings.json",
 		}, log)...)
+
+	case "sidepot":
+		rootDir := b.RootDir()
+		paths = append(paths, GetExistingFilesInDir(rootDir, []string{"start.sh", "sidepot.conf"}, log)...)
+		if dir := b.FrontendDir(); dir != "" {
+			paths = append(paths, GetExistingFilesInDir(dir, []string{"assets", "downloads", "debug.log", "settings.json"}, log)...)
+		}
 
 	case "thunder":
 		rootDir := b.RootDir()
@@ -654,7 +662,7 @@ func (b BinaryDirConfig) GetLogPaths(networkDir string, network Network, log zer
 			logfile.Name, "debug.log", "drivechaind.log",
 		}, log)...)
 
-	case "thunder", "bitnames", "bitassets", "thunder-orchard", "truthcoin", "photon", "coinshift":
+	case "thunder", "bitnames", "bitassets", "thunder-orchard", "truthcoin", "photon", "coinshift", "sidepot":
 		paths = append(paths, GetExistingFilesInDir(networkDir, []string{"logs"}, log)...)
 	}
 

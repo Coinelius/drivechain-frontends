@@ -1,5 +1,5 @@
 {
-  "version": 31,
+  "version": 32,
   "binaries": {
     "bitcoincore": {
       "type": "core",
@@ -860,6 +860,49 @@
             "macos-x86_64": "L2-S1-BBC-.+-x86_64-apple-darwin\\.zip",
             "macos-arm64": "L2-S1-BBC-.+-arm64-apple-darwin\\.zip",
             "windows-x86_64": "L2-S1-BBC-.+-x86_64-w64-msvc\\.zip"
+          }
+        }
+      },
+      "hashes": {}
+    },
+    "sidepot": {
+      "type": "sidechain",
+      "slot": 88,
+      "name": "Sidepot",
+      "version": "latest",
+      "description": "A last-buyer-wins key game with moves posted on the mainchain",
+      "repo_url": "https://github.com/Coinelius/sidepot-node",
+      "port": 6088,
+      "chain_layer": 2,
+      "color": "green",
+      "health_check": {
+        "type": "tcp"
+      },
+      "dependencies": ["bitcoind", "enforcer"],
+      "startup_log_patterns": [],
+      "directories": {
+        "binary": {
+          "default": {
+            "linux": "sidepot",
+            "macos": "sidepot",
+            "windows": "sidepot"
+          }
+        },
+        "flutter_frontend": {
+          "linux": "com.layertwolabs.sidepot",
+          "macos": "com.layertwolabs.sidepot",
+          "windows": "10520LayertwoLabs/Sidepot"
+        }
+      },
+      "download": {
+        "binary": "sidepot-node",
+        "files": {
+          "default": {
+            "base_url": "https://api.github.com/repos/Coinelius/sidepot-node/releases/latest",
+            "linux-x86_64": "sidepot-node-v?\\d+\\.\\d+\\.\\d+(-rc\\d+)?-x86_64-unknown-linux-gnu\\.zip$",
+            "macos-x86_64": "sidepot-node-v?\\d+\\.\\d+\\.\\d+(-rc\\d+)?-x86_64-apple-darwin\\.zip$",
+            "macos-arm64": "sidepot-node-v?\\d+\\.\\d+\\.\\d+(-rc\\d+)?-aarch64-apple-darwin\\.zip$",
+            "windows-x86_64": "sidepot-node-v?\\d+\\.\\d+\\.\\d+(-rc\\d+)?-x86_64-pc-windows-gnu\\.zip$"
           }
         }
       },

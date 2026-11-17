@@ -12,6 +12,7 @@ const linuxApplicationIds = {
   'zside': 'com.layertwolabs.zside',
   'truthcoin': 'com.layertwolabs.truthcoin',
   'coinshift': 'com.layertwolabs.coinshift',
+  'sidepot': 'com.layertwolabs.sidepot',
   'photon': 'com.layertwolabs.photon',
   'bbc': 'com.layertwolabs.bbc',
 };
@@ -28,6 +29,7 @@ const windowsProductNames = {
   'ZSide': 'ZSide',
   'Truthcoin': 'Truthcoin',
   'Coinshift': 'Coinshift',
+  'Sidepot': 'Sidepot',
   'Photon': 'Photon',
   'Big Block Covenant': 'Big Block Covenant',
 };

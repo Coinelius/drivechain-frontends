@@ -42,6 +42,7 @@ import (
 	multisigloungerpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/multisiglounge/v1/multisigloungev1connect"
 	rpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/orchestrator/v1/orchestratorv1connect"
 	photonrpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/photon/v1/photonv1connect"
+	sidepotrpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/sidepot/v1/sidepotv1connect"
 	stratumrpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/stratum/v1/stratumv1connect"
 	thunderrpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/thunder/v1/thunderv1connect"
 	truthcoinrpc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/gen/truthcoin/v1/truthcoinv1connect"
@@ -58,6 +59,7 @@ import (
 	coinshiftsvc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/coinshift"
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/nodes"
 	photonsvc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/photon"
+	sidepotsvc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/sidepot"
 	thundersvc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/thunder"
 	truthcoinsvc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/truthcoin"
 	zsidesvc "github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/zside"
@@ -674,6 +676,11 @@ func run(cctx *cli.Context) error {
 			h := photonsvc.NewHandler(proxy)
 			handler.SetSidechainBalance(name, h.WalletBalance)
 			photonrpc.RegisterPhotonServiceHandler(sidechainServer, h)
+			log.Info().Str("sidechain", name).Int("port", cfg.Port).Msg("registered sidechain RPC service")
+		case "sidepot":
+			h := sidepotsvc.NewHandler(proxy)
+			handler.SetSidechainBalance(name, h.WalletBalance)
+			sidepotrpc.RegisterSidepotServiceHandler(sidechainServer, h)
 			log.Info().Str("sidechain", name).Int("port", cfg.Port).Msg("registered sidechain RPC service")
 		case "truthcoin":
 			h := truthcoinsvc.NewHandler(proxy)

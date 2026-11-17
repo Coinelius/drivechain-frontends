@@ -53,6 +53,7 @@ const (
 	ResetBinaryDrivechaind
 	ResetBinaryZSided
 	ResetBinaryBbc
+	ResetBinarySidepot
 
 	// resetBinaryCount bounds iteration over the values above.
 	resetBinaryCount
@@ -102,6 +103,8 @@ func (b ResetBinary) processName() string {
 		return "photon"
 	case ResetBinaryCoinShift:
 		return "coinshift"
+	case ResetBinarySidepot:
+		return "sidepot"
 	case ResetBinaryGRPCurl:
 		return "grpcurl"
 	case ResetBinaryDrivechaind:
@@ -137,6 +140,8 @@ func (b ResetBinary) dirConfig() (config.BinaryDirConfig, bool) {
 		return config.PhotonDirs, true
 	case ResetBinaryCoinShift:
 		return config.CoinShiftDirs, true
+	case ResetBinarySidepot:
+		return config.SidepotDirs, true
 	case ResetBinaryBbc:
 		return config.BbcDirs, true
 	default:
@@ -374,6 +379,7 @@ var resetSidechainBinaries = []ResetBinary{
 	ResetBinaryTruthcoin,
 	ResetBinaryPhoton,
 	ResetBinaryCoinShift,
+	ResetBinarySidepot,
 }
 
 var resetStopOrder = []ResetBinary{
@@ -385,6 +391,7 @@ var resetStopOrder = []ResetBinary{
 	ResetBinaryTruthcoin,
 	ResetBinaryPhoton,
 	ResetBinaryCoinShift,
+	ResetBinarySidepot,
 	ResetBinaryBitwindowd,
 	ResetBinaryEnforcer,
 	ResetBinaryBitcoind,
@@ -402,6 +409,7 @@ var resetStartOrder = []ResetBinary{
 	ResetBinaryTruthcoin,
 	ResetBinaryPhoton,
 	ResetBinaryCoinShift,
+	ResetBinarySidepot,
 }
 
 const resetRestartTimeout = 5 * time.Minute

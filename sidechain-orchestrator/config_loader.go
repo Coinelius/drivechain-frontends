@@ -245,6 +245,7 @@ var jsonKeyToName = map[string]string{
 	"drivechaind": "drivechaind",
 	"zsided":      "zsided",
 	"thunder":     "thunder",
+	"sidepot":     "sidepot",
 	"bitnames":    "bitnames",
 	"bitassets":   "bitassets",
 	"truthcoin":   "truthcoin",

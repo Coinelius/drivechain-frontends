@@ -31,6 +31,7 @@ import (
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/bitnames"
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/coinshift"
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/photon"
+	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/sidepot"
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/thunder"
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/truthcoin"
 	"github.com/LayerTwo-Labs/sidesail/sidechain-orchestrator/sidechain/zside"
@@ -1128,6 +1129,7 @@ func createSidechainCommands() []*cli.Command {
 		createGenericSidechainCommand("bitnames", newBitnamesClient),
 		createGenericSidechainCommand("coinshift", newCoinshiftClient),
 		createGenericSidechainCommand("photon", newPhotonClient),
+		createGenericSidechainCommand("sidepot", newSidepotClient),
 		thunderCommand(),
 		createGenericSidechainCommand("truthcoin", newTruthcoinClient),
 		createGenericSidechainCommand("zside", newZsideClient),
@@ -1166,6 +1168,15 @@ type ThunderClientWrapper struct {
 }
 
 func (w *ThunderClientWrapper) OpenAPISchema(ctx context.Context) (json.RawMessage, error) {
+	return w.Client.OpenAPISchema(ctx)
+}
+
+// SidepotClientWrapper adapts the sidepot.Client to SidechainClient interface
+type SidepotClientWrapper struct {
+	*sidepot.Client
+}
+
+func (w *SidepotClientWrapper) OpenAPISchema(ctx context.Context) (json.RawMessage, error) {
 	return w.Client.OpenAPISchema(ctx)
 }
 
@@ -1233,6 +1244,10 @@ func newPhotonClient(port int, _ config.Network) SidechainClient {
 
 func newThunderClient(port int, _ config.Network) SidechainClient {
 	return &ThunderClientWrapper{thunder.NewClient("localhost", port)}
+}
+
+func newSidepotClient(port int, _ config.Network) SidechainClient {
+	return &SidepotClientWrapper{sidepot.NewClient("localhost", port)}
 }
 
 func newTruthcoinClient(port int, network config.Network) SidechainClient {
@@ -1426,6 +1441,8 @@ func sidechainBinaryType(sidechainName string) (pb.BinaryType, error) {
 		return pb.BinaryType_BINARY_TYPE_BITASSETS, nil
 	case "coinshift":
 		return pb.BinaryType_BINARY_TYPE_COINSHIFT, nil
+	case "sidepot":
+		return pb.BinaryType_BINARY_TYPE_SIDEPOT, nil
 	case "photon":
 		return pb.BinaryType_BINARY_TYPE_PHOTON, nil
 	case "truthcoin":

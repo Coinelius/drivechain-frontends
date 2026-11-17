@@ -1,0 +1,413 @@
+import 'dart:convert';
+
+import 'package:connectrpc/protobuf.dart';
+import 'package:sidechain_core/rpcs/keepalive_http_client.dart';
+import 'package:connectrpc/protocol/connect.dart' as connect;
+import 'package:sidechain_core/auth/local_auth.dart';
+import 'package:fixnum/fixnum.dart';
+import 'package:get_it/get_it.dart';
+import 'package:logger/logger.dart';
+import 'package:sidechain_core/bitcoin.dart';
+import 'package:sidechain_core/classes/rpc_connection.dart';
+import 'package:sidechain_core/config/binaries.dart';
+import 'package:sidechain_core/gen/sidepot/v1/sidepot.connect.client.dart';
+import 'package:sidechain_core/gen/sidepot/v1/sidepot.pb.dart' as pb;
+import 'package:sidechain_core/rpcs/orchestrator_rpc.dart';
+import 'package:sidechain_core/rpcs/rpc_sidechain.dart';
+import 'package:sidechain_core/rpcs/thunder_utxo.dart';
+import 'package:sidechain_core/models/core_transaction.dart';
+
+/// API to the Sidepot node.
+abstract class SidepotRPC extends SidechainRPC {
+  SidepotRPC({required super.binaryType});
+
+  /// Get total sidechain wealth in BTC
+  Future<double> getSidechainWealth();
+
+  /// Create a deposit transaction
+  Future<String> createDeposit(String address, double amount, double fee);
+
+  /// Connect to a peer
+  Future<void> connectPeer(String peerAddress);
+
+  /// List connected peers
+  Future<List<Map<String, dynamic>>> listPeers();
+
+  /// Get block by hash
+  Future<Map<String, dynamic>?> getBlock(String hash);
+
+  /// Get best mainchain block hash
+  Future<String?> getBestMainchainBlockHash();
+
+  /// Get best sidechain block hash
+  Future<String?> getBestSidechainBlockHash();
+
+  /// Get BMM inclusions
+  Future<String> getBMMInclusions(String blockHash);
+
+  /// Remove transaction from mempool
+  Future<void> removeFromMempool(String txid);
+
+  /// Generate new mnemonic
+  Future<String> generateMnemonic();
+
+  /// Set seed from mnemonic
+  Future<void> setSeedFromMnemonic(String mnemonic);
+
+  /// The game, after the last block and as of the latest mainchain block.
+  Future<pb.GetGameStateResponse> getGameState();
+
+  /// The game account of this node.
+  Future<pb.GetGameAccountResponse> getGameAccount();
+
+  /// Buy keys in the current round. The node sets the price limit.
+  Future<pb.GameMoveResponse> gameBuy(int keys);
+
+  /// Pay sats out of the game account to a sidechain coin. Zero pays everything,
+  /// and an empty [dest] pays a new address of this wallet.
+  Future<pb.GameMoveResponse> gameCashout(int amountSats, {String dest = ''});
+
+  /// Deposit from the enforcer wallet into the game account. Returns the mainchain txid.
+  Future<String> gameDeposit(int valueSats, int feeSats);
+}
+
+class SidepotLive extends SidepotRPC {
+  @override
+  final log = GetIt.I.get<Logger>();
+
+  late SidepotServiceClient _client;
+
+  SidepotLive() : super(binaryType: BinaryType.BINARY_TYPE_SIDEPOT) {
+    final transport = connect.Transport(
+      baseUrl: OrchestratorEndpoint.url,
+      codec: const ProtoCodec(),
+      httpClient: unaryHttpClient(),
+      interceptors: [LocalAuth.interceptor()],
+    );
+    _client = SidepotServiceClient(transport);
+  }
+
+  @override
+  Future<List<String>> binaryArgs() async => [];
+
+  @override
+  Future<(double, double)> balance() async {
+    final resp = await GetIt.I.get<OrchestratorRPC>().getSidechainBalance(binaryType);
+    final confirmed = satoshiToBTC(resp.confirmedSats.toInt());
+    final unconfirmed = satoshiToBTC(resp.pendingSats.toInt());
+    return (confirmed, unconfirmed);
+  }
+
+  @override
+  Future<int> getBlockCount() async {
+    final resp = await _client.getBlockCount(pb.GetBlockCountRequest());
+    return resp.count.toInt();
+  }
+
+  @override
+  Future<void> stopRPC() async {
+    await _client.stop(pb.StopRequest());
+  }
+
+  @override
+  Future<BlockchainInfo> getBlockchainInfo() async {
+    final blocks = await getBlockCount();
+    final explorerHeaders = await fetchExplorerHeaders();
+    final headers = explorerHeaders ?? blocks;
+    final bestBlockHash = await getBestSidechainBlockHash();
+
+    return BlockchainInfo(
+      chain: 'signet',
+      blocks: blocks,
+      headers: headers,
+      bestBlockHash: bestBlockHash ?? '',
+      difficulty: 0,
+      time: 0,
+      medianTime: 0,
+      verificationProgress: 100.0,
+      initialBlockDownload: true,
+      chainWork: '',
+      sizeOnDisk: 0,
+      pruned: false,
+      warnings: [],
+    );
+  }
+
+  @override
+  List<String> getMethods() => sidepotRPCMethods;
+
+  @override
+  Future<dynamic> callRAW(String method, [dynamic params]) async {
+    final paramsJson = params != null ? jsonEncode(params) : '';
+    final resp = await _client.callRaw(pb.CallRawRequest(method: method, paramsJson: paramsJson));
+    if (resp.resultJson.isEmpty) {
+      return null;
+    }
+    return jsonDecode(resp.resultJson);
+  }
+
+  @override
+  Future<String> getDepositAddress() async {
+    final resp = await _client.getNewAddress(pb.GetNewAddressRequest());
+    return formatDepositAddress(resp.address, chain.slot);
+  }
+
+  @override
+  Future<String> getSideAddress() async {
+    final resp = await _client.getNewAddress(pb.GetNewAddressRequest());
+    return resp.address;
+  }
+
+  @override
+  Future<List<CoreTransaction>> listTransactions() async {
+    final resp = await _client.listWalletTransactions(pb.ListWalletTransactionsRequest());
+    // The tip and history must come from the same node.
+    return resp.transactions.map((tx) => _toCoreTransaction(tx, resp.tipHeight)).toList();
+  }
+
+  CoreTransaction _toCoreTransaction(pb.SidechainWalletTransaction tx, int tip) {
+    final sats = tx.valueSats.toInt();
+    final height = tx.blockHeight;
+    // Full mode reads the node, which records no height for a coin. A
+    // confirmed entry with no height counts as one confirmation, not as the
+    // whole chain.
+    final confirmations = !tx.confirmed ? 0 : (height > 0 && tip >= height ? tip - height + 1 : 1);
+    // A chain records no time for some coins, and a mempool entry has none
+    // yet. Such an entry keeps zero rather than a time that moves on every
+    // refresh, and the table shows that it has no date.
+    final blockTime = tx.blockTime.toInt();
+    final time = blockTime > 0 ? DateTime.fromMillisecondsSinceEpoch(blockTime * 1000) : DateTime.now();
+    return CoreTransaction(
+      address: '',
+      category: sats < 0 ? 'send' : 'receive',
+      // The table converts this to BTC itself, so it holds satoshis.
+      amount: sats.toDouble(),
+      label: '',
+      vout: tx.vout,
+      fee: satoshiToBTC(tx.feeSats.toInt()),
+      confirmations: confirmations,
+      trusted: tx.confirmed,
+      blockhash: '',
+      blockindex: 0,
+      blocktime: blockTime,
+      txid: tx.txid,
+      time: time,
+      timereceived: time,
+      comment: '',
+      bip125Replaceable: 'no',
+      abandoned: false,
+      // Two CoreTransactions compare on raw alone. A txid alone would make a
+      // confirmed entry equal its own pending form, and the table would then
+      // keep the stale row.
+      raw: jsonEncode({
+        'txid': tx.txid,
+        'value_sats': sats,
+        'confirmations': confirmations,
+        'confirmed': tx.confirmed,
+        'block_height': height,
+        'block_time': blockTime,
+      }),
+    );
+  }
+
+  @override
+  Future<String> withdraw(String address, int amountSats, int sidechainFeeSats, int mainchainFeeSats) async {
+    final resp = await _client.withdraw(
+      pb.WithdrawRequest(
+        address: address,
+        amountSats: Int64(amountSats),
+        sideFeeSats: Int64(sidechainFeeSats),
+        mainFeeSats: Int64(mainchainFeeSats),
+      ),
+    );
+    return resp.txid;
+  }
+
+  @override
+  Future<double> sideEstimateFee() async => 0.00001;
+
+  @override
+  Future<String> sideSend(String address, double amount, bool subtractFeeFromAmount) async {
+    final resp = await _client.transfer(
+      pb.TransferRequest(
+        address: address,
+        amountSats: Int64(btcToSatoshi(amount).toInt()),
+        feeSats: Int64(btcToSatoshi(0.00001).toInt()),
+      ),
+    );
+    return resp.txid;
+  }
+
+  @override
+  Future<double> getSidechainWealth() async {
+    final resp = await _client.getSidechainWealth(pb.GetSidechainWealthRequest());
+    return satoshiToBTC(resp.sats.toInt());
+  }
+
+  @override
+  Future<String> createDeposit(String address, double amount, double fee) async {
+    final resp = await _client.createDeposit(
+      pb.CreateDepositRequest(
+        address: address,
+        valueSats: Int64(btcToSatoshi(amount).toInt()),
+        feeSats: Int64(btcToSatoshi(fee).toInt()),
+      ),
+    );
+    return resp.txid;
+  }
+
+  @override
+  Future<PendingWithdrawalBundle?> getPendingWithdrawalBundle() async {
+    final resp = await _client.getPendingWithdrawalBundle(pb.GetPendingWithdrawalBundleRequest());
+    if (resp.bundleJson.isEmpty) {
+      return null;
+    }
+    final decoded = jsonDecode(resp.bundleJson);
+    if (decoded == null) {
+      return null;
+    }
+    return PendingWithdrawalBundle.fromMap(decoded as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> connectPeer(String peerAddress) async {
+    await _client.connectPeer(pb.ConnectPeerRequest(address: peerAddress));
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listPeers() async {
+    final resp = await _client.listPeers(pb.ListPeersRequest());
+    if (resp.peersJson.isEmpty) {
+      return [];
+    }
+    return (jsonDecode(resp.peersJson) as List<dynamic>).cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<BmmResult> mine(int feeSats) async {
+    final resp = await _client.mine(pb.MineRequest(feeSats: Int64(feeSats)));
+    return BmmResult.fromMap(jsonDecode(resp.bmmResultJson));
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getBlock(String hash) async {
+    final resp = await _client.getBlock(pb.GetBlockRequest(hash: hash));
+    if (resp.blockJson.isEmpty) {
+      return null;
+    }
+    return jsonDecode(resp.blockJson) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<String?> getBestMainchainBlockHash() async {
+    final resp = await _client.getBestMainchainBlockHash(pb.GetBestMainchainBlockHashRequest());
+    return resp.hash.isEmpty ? null : resp.hash;
+  }
+
+  @override
+  Future<String?> getBestSidechainBlockHash() async {
+    final resp = await _client.getBestSidechainBlockHash(pb.GetBestSidechainBlockHashRequest());
+    return resp.hash.isEmpty ? null : resp.hash;
+  }
+
+  @override
+  Future<String> getBMMInclusions(String blockHash) async {
+    final resp = await _client.getBmmInclusions(pb.GetBmmInclusionsRequest(blockHash: blockHash));
+    return resp.inclusions;
+  }
+
+  @override
+  Future<List<SidechainUTXO>> listUTXOs() async {
+    final resp = await _client.getWalletUtxos(pb.GetWalletUtxosRequest());
+    if (resp.utxosJson.isEmpty) {
+      return [];
+    }
+    return SidechainUTXO.fromJsonList(jsonDecode(resp.utxosJson) as List<dynamic>);
+  }
+
+  @override
+  Future<List<SidechainUTXO>> listAllUTXOs() async {
+    final resp = await _client.listUtxos(pb.ListUtxosRequest());
+    if (resp.utxosJson.isEmpty) {
+      return [];
+    }
+    return SidechainUTXO.fromJsonList(jsonDecode(resp.utxosJson) as List<dynamic>);
+  }
+
+  @override
+  Future<void> removeFromMempool(String txid) async {
+    await _client.removeFromMempool(pb.RemoveFromMempoolRequest(txid: txid));
+  }
+
+  @override
+  Future<int?> getLatestFailedWithdrawalBundleHeight() async {
+    final resp = await _client.getLatestFailedWithdrawalBundleHeight(pb.GetLatestFailedWithdrawalBundleHeightRequest());
+    return resp.height == 0 ? null : resp.height.toInt();
+  }
+
+  @override
+  Future<String> generateMnemonic() async {
+    final resp = await _client.generateMnemonic(pb.GenerateMnemonicRequest());
+    return resp.mnemonic;
+  }
+
+  @override
+  Future<void> setSeedFromMnemonic(String mnemonic) async {
+    await _client.setSeedFromMnemonic(pb.SetSeedFromMnemonicRequest(mnemonic: mnemonic));
+  }
+
+  @override
+  Future<pb.GetGameStateResponse> getGameState() => _client.getGameState(pb.GetGameStateRequest());
+
+  @override
+  Future<pb.GetGameAccountResponse> getGameAccount() => _client.getGameAccount(pb.GetGameAccountRequest());
+
+  @override
+  Future<pb.GameMoveResponse> gameBuy(int keys) => _client.gameBuy(pb.GameBuyRequest(keys: keys));
+
+  @override
+  Future<pb.GameMoveResponse> gameCashout(int amountSats, {String dest = ''}) =>
+      _client.gameCashout(pb.GameCashoutRequest(amountSats: Int64(amountSats), dest: dest));
+
+  @override
+  Future<String> gameDeposit(int valueSats, int feeSats) async {
+    final resp = await _client.gameDeposit(
+      pb.GameDepositRequest(valueSats: Int64(valueSats), feeSats: Int64(feeSats)),
+    );
+    return resp.txid;
+  }
+}
+
+final sidepotRPCMethods = [
+  'balance',
+  'connect_peer',
+  'create_deposit',
+  'create_transfer',
+  'create_withdrawal',
+  'format_deposit_address',
+  'game_account',
+  'game_buy',
+  'game_cashout',
+  'game_deposit',
+  'game_my_account',
+  'game_state',
+  'generate_mnemonic',
+  'get_best_mainchain_block_hash',
+  'get_best_sidechain_block_hash',
+  'get_block',
+  'get_bmm_inclusions',
+  'get_new_address',
+  'get_wallet_addresses',
+  'get_wallet_utxos',
+  'getblockcount',
+  'latest_failed_withdrawal_bundle_height',
+  'list_peers',
+  'list_utxos',
+  'mine',
+  'pending_withdrawal_bundle',
+  'openapi_schema',
+  'remove_from_mempool',
+  'set_seed_from_mnemonic',
+  'sidechain_wealth',
+  'stop',
+];

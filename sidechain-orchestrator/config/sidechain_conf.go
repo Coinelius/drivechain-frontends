@@ -682,6 +682,16 @@ var KnownSidechainSpecs = map[string]SidechainConfSpec{
 		DirKey:            "truthcoin",
 		LegacyRootDirName: "truthcoin",
 	},
+	"sidepot": {
+		EnforcerArg:    "mainchain-grpc-url",
+		Name:           "Sidepot",
+		ConfigFilename: "sidepot.conf",
+		BasePort:       6088,
+		CliArgKeys:     []string{"net-addr", "mainchain-grpc-url"},
+		PortStyle:      "grpc",
+		RPCKey:         "rpc-addr",
+		DirKey:         "sidepot",
+	},
 	"coinshift": {
 		EnforcerArg:    "mainchain-grpc-url",
 		Name:           "CoinShift",
