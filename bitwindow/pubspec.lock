@@ -904,6 +904,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  sidepot:
+    dependency: "direct main"
+    description:
+      path: "../sidepot"
+      relative: true
+    source: path
+    version: "0.1.0"
   skeletonizer:
     dependency: transitive
     description:

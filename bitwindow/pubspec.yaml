@@ -38,6 +38,8 @@ dependencies:
     path: ../photon
   coinshift:
     path: ../coinshift
+  sidepot:
+    path: ../sidepot
   logger:
     path: ../third_party/logger
   auto_route: ^11.2.0

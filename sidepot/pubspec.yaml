@@ -1,0 +1,76 @@
+name: sidepot
+description: UI for Drivechain (BIP300/301) based sidechains
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
+
+version: 0.1.0
+
+environment:
+  sdk: 3.13.7
+  flutter: 3.47.9
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sail_ui:
+    path: ../sail_ui
+  sidechain_core:
+    path: ../sidechain_core
+
+  logger:
+    path: ../third_party/logger
+  auto_route: ^11.2.0
+  get_it: ^9.3.0
+  path: ^1.9.1
+  auto_updater: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  fixnum: ^1.1.1
+
+  flutter_lints: ^6.0.0
+  auto_route_generator: ^10.6.0
+  build_runner: ^2.16.1
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  windows:
+    generate: true
+    image_path: "assets/sidepot.png"
+    icon_size: 256
+  macos:
+    generate: true
+  image_path: "assets/sidepot.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/bin/
+    # Source files for code search
+    - lib/
+    - packages/sail_ui/shell/run_sidechain_app.dart
+    - packages/sail_ui/shell/sidechain_conf_editor_page.dart
+    - packages/sail_ui/shell/sidechain_configure_homepage_page.dart
+    - packages/sail_ui/shell/sidechain_home_page.dart
+    - packages/sail_ui/shell/sidechain_homepage.dart
+    - packages/sail_ui/shell/sidechain_settings_page.dart
+
+# Windows release stuff.
+# CI has a certificate.pfx we use to sign the build with
+# https://pub.dev/packages/msix
+msix_config:
+  display_name: Sidepot
+  languages: en-us
+  windows_build_args: --dart-define-from-file=build-vars.env
+  publisher: CN=CB6BF331-C832-4005-970F-B880295700CA
+  publisher_display_name: LayerTwo Labs
+  identity_name: LayerTwoLabs.Sidepot
+  msix_version: 1.0.0.0
+  logo_path: windows/runner/resources/app_icon.ico
+  capabilities: internetClient,internetClientServer
+  os_min_version: 10.0.17763.0
+  store: false
+  install_certificate: false
+  sign_msix: true

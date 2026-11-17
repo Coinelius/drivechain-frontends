@@ -407,6 +407,7 @@ class RecentActionsViewModel extends BaseViewModel {
       4 => 'bitassets',
       9 => 'thunder',
       13 => 'truthcoin',
+      88 => 'sidepot',
       98 => 'zside',
       99 => 'photon',
       _ => 'thunder', // fallback

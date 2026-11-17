@@ -5,6 +5,7 @@ import 'package:coinshift/coinshift_module.dart';
 import 'package:photon/photon_module.dart';
 import 'package:sail_ui/sail_ui.dart';
 import 'package:sail_ui/shell/shell.dart';
+import 'package:sidepot/sidepot_module.dart';
 import 'package:thunder/thunder_module.dart';
 import 'package:truthcoin/truthcoin_module.dart';
 import 'package:zside/zside_module.dart';
@@ -18,6 +19,7 @@ final List<SidechainModule> hostedModules = [
   ZSideModule(),
   PhotonModule(),
   CoinShiftModule(),
+  SidepotModule(),
 ];
 
 SidechainModule? hostedModuleFor(Binary chain) {
