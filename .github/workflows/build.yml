@@ -282,7 +282,7 @@ jobs:
           cp -r third_party "$BUILD_DIR/"
           # BitWindow opens the sidechain apps inside its own window.
           if [ "${{ matrix.client }}" == "bitwindow" ]; then
-            cp -r thunder bitnames bitassets truthcoin zside photon coinshift "$BUILD_DIR/"
+            cp -r thunder bitnames bitassets truthcoin zside photon coinshift sidepot "$BUILD_DIR/"
           fi
           # Every client embeds the orchestrator daemon.
           cp -r sidechain-orchestrator "$BUILD_DIR/"

@@ -1,0 +1,111 @@
+# Unsigned test packages of BitWindow and the Sidepot app, for trying the branch before it is merged.
+# Run by hand (Actions > Sidepot test build > Run workflow). It follows build.yml's steps, without code signing,
+# notarization or publishing, and keeps the packages as workflow artifacts.
+name: Sidepot test build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [sidepot]
+    paths:
+      - ".github/workflows/sidepot-test-build.yml"
+
+env:
+  GO_VERSION: "1.27"
+  FLUTTER_VERSION: "3.47.9"
+
+jobs:
+  build:
+    name: ${{ matrix.client }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2022 has Inno Setup. The glibc of the Linux image is the oldest the build runs on.
+        os: [windows-2022, ubuntu-22.04]
+        client: [bitwindow, sidepot]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache Go modules
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-build-${{ env.GO_VERSION }}-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-build-${{ env.GO_VERSION }}-${{ runner.os }}-
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: "flutter-sdk-:channel:-:version:-:os:-:arch:"
+          pub-cache: true
+          pub-cache-key: "flutter-pub-:channel:-:version:-:os:-:arch:"
+
+      - name: Install Fastforge
+        run: dart pub global activate fastforge
+
+      - uses: extractions/setup-just@v4
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      # Freezes the hwi-daemon.
+      - uses: actions/setup-python@v6
+        if: matrix.client == 'bitwindow'
+        with:
+          python-version: "3.12"
+
+      - name: Setup build directory
+        run: |
+          BUILD_DIR="b-${{ matrix.os }}-${{ matrix.client }}"
+          rm -rf "$BUILD_DIR"
+          mkdir -p "$BUILD_DIR"
+          cp -r ${{ matrix.client }} "$BUILD_DIR/"
+          cp -r scripts sail_ui sidechain_core drivechain_lints third_party "$BUILD_DIR/"
+          # BitWindow opens the sidechain apps inside its own window.
+          if [ "${{ matrix.client }}" == "bitwindow" ]; then
+            cp -r thunder bitnames bitassets truthcoin zside photon coinshift sidepot "$BUILD_DIR/"
+          fi
+          # Every client embeds the orchestrator daemon.
+          cp -r sidechain-orchestrator "$BUILD_DIR/"
+          ./scripts/mirror-go-replace-deps.sh "$BUILD_DIR"
+          mkdir -p "$BUILD_DIR/${{ matrix.client }}/assets/bin"
+          echo "BUILD_DIR=$BUILD_DIR" >> $GITHUB_ENV
+
+      - name: Install Flutter dependencies
+        run: |
+          cd ${{ env.BUILD_DIR }}/${{ matrix.client }}
+          ../scripts/sync-path-dep-versions.sh .
+          flutter pub get --enforce-lockfile
+
+      # https://docs.flutter.dev/platform-integration/linux/building
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+          sudo apt-get install -y clang cmake git ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libcurl4-openssl-dev libusb-1.0-0-dev
+
+      - name: Build app
+        run: |
+          set -e
+          cd ${{ env.BUILD_DIR }}
+          export BITWINDOW_VARIANT="standard"
+          # No certificate: the packages are unsigned.
+          ./scripts/build-app.sh ${{ runner.os }} ${{ matrix.client }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.client }}-unsigned-${{ runner.os }}
+          if-no-files-found: error
+          path: ${{ env.BUILD_DIR }}/${{ matrix.client }}/release/*
